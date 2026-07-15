@@ -22,9 +22,14 @@ public class Department {
     @Column(nullable = false, unique = true, length = 100)
     private String name;
 
+    // Unidirectional @OneToOne (no mappedBy on Doctor side) — Department holds a plain FK to a
+    // Doctor with no way to navigate back from Doctor to "the department I head."
     @OneToOne
     private Doctor headDoctor;
 
+    // Department is the owning side of the M:N: it defines the join table explicitly, so this is
+    // the side whose collection changes actually get written to my_dpt_doctors. Doctor.departments
+    // (mappedBy="departments") is the inverse, read-only-in-effect side.
     @ManyToMany
     @JoinTable(
             name = "my_dpt_doctors",

@@ -28,10 +28,14 @@ public class Insurance {
     @Column(nullable = false)
     private LocalDate validUntil;
 
+    // updatable=false ensures Hibernate only ever sets this on INSERT — subsequent updates to the
+    // Insurance row leave the original creation time untouched.
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    // Inverse side: no FK column lives here. Patient.insurance (with @JoinColumn) is the owner,
+    // so nulling this field from the Insurance side has no effect on the database.
     @OneToOne(mappedBy = "insurance") // inverse side
     private Patient patient;
 

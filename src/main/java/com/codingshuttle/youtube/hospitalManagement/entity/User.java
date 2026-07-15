@@ -21,9 +21,13 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+// Index supports the OAuth2 login path, where a user is looked up by (providerId, providerType)
+// instead of by username/password.
 @Table(name = "app_user", indexes = {
         @Index(name = "idx_provider_id_provider_type", columnList = "providerId, providerType")
 })
+// User doubles as the Spring Security principal: JwtAuthFilter puts this very entity into the
+// SecurityContext, so there is no separate UserDetails adapter/mapping layer to keep in sync.
 public class User implements UserDetails {
 
     @Id
@@ -32,6 +36,7 @@ public class User implements UserDetails {
 
     @JoinColumn(unique = true, nullable = false)
     private String username;
+    // Nullable: OAuth2-only accounts never set a local password, only email/password signups do.
     private String password;
 
     private String providerId;
@@ -39,6 +44,9 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     private AuthProviderType providerType;
 
+    // EAGER is required here: getAuthorities() reads roles synchronously during authentication
+    // (building the SecurityContext), which can happen outside the original persistence context —
+    // a LAZY collection would throw LazyInitializationException at that point.
     @ElementCollection(fetch = FetchType.EAGER)
     @Enumerated(EnumType.STRING)
     Set<RoleType> roles = new HashSet<>();
@@ -51,6 +59,9 @@ public class User implements UserDetails {
         Set<SimpleGrantedAuthority> authorities = new HashSet<>();
         roles.forEach(
                 role -> {
+                    // Expands each coarse RoleType into fine-grained PermissionType authorities via
+                    // RolePermissionMapping, PLUS keeps the coarse ROLE_x authority — this dual output
+                    // is what lets WebSecurityConfig mix hasRole() and hasAuthority()/@PreAuthorize checks.
                     Set<SimpleGrantedAuthority> permissions = RolePermissionMapping.getAuthoritiesForRole(role);
                     authorities.addAll(permissions);
                     authorities.add(new SimpleGrantedAuthority("ROLE_"+role.name()));
