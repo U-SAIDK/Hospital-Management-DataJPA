@@ -15,21 +15,30 @@ import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 @Configuration
 public class AppConfig {
 
+    // Convention-based reflection mapper used throughout the service layer (modelMapper.map(entity,
+    // XDto.class)) to avoid hand-written entity<->DTO conversion boilerplate.
     @Bean
     public ModelMapper modelMapper() {
         return new ModelMapper();
     }
 
+    // BCrypt is what CustomUserDetailsService/AuthService compare against for local (non-OAuth2)
+    // logins; OAuth2-only users never get a password checked here since User.password is nullable.
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    // Exposes Spring Security's internally-built AuthenticationManager as a bean so AuthService can
+    // call authenticate(...) directly instead of wiring up the DaoAuthenticationProvider itself.
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
         return configuration.getAuthenticationManager();
     }
 
+    // Left commented-out deliberately: an artifact from before users were DB-backed (an
+    // InMemoryUserDetailsManager with hardcoded admin/patient accounts). Kept as a historical
+    // reference of "the version before CustomUserDetailsService existed," not dead code to delete.
 //    @Bean
     UserDetailsService userDetailsService() {
         UserDetails user1 = User.withUsername("admin")

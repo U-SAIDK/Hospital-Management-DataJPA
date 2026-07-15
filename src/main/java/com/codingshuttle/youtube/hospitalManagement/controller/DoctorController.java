@@ -21,6 +21,11 @@ public class DoctorController {
 
     @GetMapping("/appointments")
     public ResponseEntity<List<AppointmentResponseDto>> getAllAppointmentsOfDoctor() {
+        // Safe cast because User implements UserDetails directly and IS the security principal
+        // (see JwtAuthFilter) - there's no separate "UserDetails wrapper" to unwrap here.
+        // doctorId comes from the authenticated token, not a path/query param, so a doctor can't
+        // pass someone else's id; the @PreAuthorize check in AppointmentService is then just defense
+        // in depth for this call path (and the only real guard if the method is invoked another way).
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return ResponseEntity.ok(appointmentService.getAllAppointmentsOfDoctor(user.getId()));
     }

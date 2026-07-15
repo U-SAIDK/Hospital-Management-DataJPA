@@ -25,6 +25,8 @@ public class DoctorService {
     private final ModelMapper modelMapper;
     private final UserRepository userRepository;
 
+    // No @Transactional needed: a single read-only findAll() doesn't require multi-step atomicity,
+    // and the mapping to DTOs below happens before the (short, implicit) session closes.
     public List<DoctorResponseDto> getAllDoctors() {
         return doctorRepository.findAll()
                 .stream()
@@ -33,6 +35,9 @@ public class DoctorService {
     }
 
 
+    // @Transactional matters here because this method mutates two related things (creates a Doctor,
+    // and adds a role to the linked User) that must succeed or fail together - a User elevated to
+    // DOCTOR without an actual Doctor row (or vice versa) would leave the data model inconsistent.
     @Transactional
     public DoctorResponseDto onBoardNewDoctor(OnboardDoctorRequestDto onBoardDoctorRequestDto) {
         User user = userRepository.findById(onBoardDoctorRequestDto.getUserId()).orElseThrow();
@@ -47,6 +52,8 @@ public class DoctorService {
                 .user(user)
                 .build();
 
+        // User is already managed (loaded via findById in this same @Transactional method), so this
+        // role change is persisted by dirty checking at flush time - no explicit userRepository.save().
         user.getRoles().add(RoleType.DOCTOR);
 
         return modelMapper.map(doctorRepository.save(doctor), DoctorResponseDto.class);

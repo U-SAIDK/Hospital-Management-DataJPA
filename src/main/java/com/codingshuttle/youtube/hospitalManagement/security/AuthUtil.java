@@ -21,10 +21,15 @@ public class AuthUtil {
     @Value("${jwt.secretKey}")
     private String jwtSecretKey;
 
+    // Symmetric (HMAC) signing: same key signs and verifies, so this key must never leave the
+    // server. A fresh SecretKey is derived per call rather than cached - cheap, and avoids
+    // holding key material in a long-lived field.
     private SecretKey getSecretKey() {
         return Keys.hmacShaKeyFor(jwtSecretKey.getBytes(StandardCharsets.UTF_8));
     }
 
+    // 10-minute expiry (hardcoded here, see application.properties note) - short-lived by
+    // design since there's no refresh-token flow; the client must re-login once this expires.
     public String generateAccessToken(User user) {
         return Jwts.builder()
                 .subject(user.getUsername())
@@ -35,6 +40,8 @@ public class AuthUtil {
                 .compact();
     }
 
+    // parseSignedClaims verifies the HMAC signature before returning claims - an invalid/tampered
+    // token throws JwtException here, which JwtAuthFilter's catch block routes to GlobalExceptionHandler.
     public String getUsernameFromToken(String token) {
         Claims claims =  Jwts.parser()
                 .verifyWith(getSecretKey())
@@ -54,6 +61,9 @@ public class AuthUtil {
     }
 
 
+    // Each OAuth2 provider exposes a different user-info schema, so there's no single
+    // "id" attribute name that works everywhere - Google's stable subject claim is "sub",
+    // GitHub's is a numeric "id". This is what User.providerId+providerType uniquely identifies.
     public String determineProviderIdFromOAuth2User(OAuth2User oAuth2User, String registrationId) {
         String providerId = switch (registrationId.toLowerCase()) {
             case "google" -> oAuth2User.getAttribute("sub");
@@ -72,6 +82,9 @@ public class AuthUtil {
         return providerId;
     }
 
+    // Prefer email as the username (matches how EMAIL signups identify users), but not every
+    // provider/account guarantees a public email - fall back to a provider-specific handle
+    // (GitHub's "login") or, as a last resort, the raw providerId so signup can never fail on a missing username.
     public String determineUsernameFromOAuth2User(OAuth2User oAuth2User, String registrationId, String providerId) {
         String email = oAuth2User.getAttribute("email");
         if (email != null && !email.isBlank()) {

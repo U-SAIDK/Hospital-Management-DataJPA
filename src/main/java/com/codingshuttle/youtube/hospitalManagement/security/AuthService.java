@@ -46,6 +46,9 @@ public class AuthService {
         return new LoginResponseDto(token, user.getId());
     }
 
+    // Shared core for BOTH plain email/password signup (signup()) and OAuth2 signup
+    // (handleOAuth2LoginRequest()) so the two flows can never diverge on how a User/Patient
+    // pair gets created - only the authProviderType/providerId/password path differs per caller.
     public User signUpInternal(SignUpRequestDto signupRequestDto, AuthProviderType authProviderType, String providerId) {
         User user = userRepository.findByUsername(signupRequestDto.getUsername()).orElse(null);
 
@@ -58,12 +61,17 @@ public class AuthService {
                 .roles(signupRequestDto.getRoles()) // Role.PATIENT
                 .build();
 
+        // Only EMAIL signups carry a password to hash; OAuth2-only users have no local
+        // credential (User.password stays null - login for them always goes through the provider).
         if(authProviderType == AuthProviderType.EMAIL) {
             user.setPassword(passwordEncoder.encode(signupRequestDto.getPassword()));
         }
 
         user = userRepository.save(user);
 
+        // Every self-service signup becomes a Patient (Doctors are only created by an admin via
+        // AdminController.onBoardNewDoctor). User+Patient are created together here so a User row
+        // never exists without its Patient counterpart - the two rows model one real-world "self-registered person".
         Patient patient = Patient.builder()
                 .name(signupRequestDto.getName())
                 .email(signupRequestDto.getUsername())
@@ -80,6 +88,9 @@ public class AuthService {
         return new SignupResponseDto(user.getId(), user.getUsername());
     }
 
+    // @Transactional here because this method may perform BOTH the User save and the Patient
+    // save (via signUpInternal) in one atomic unit - a failure partway through must not leave
+    // a User row without its Patient (or vice versa).
     @Transactional
     public ResponseEntity<LoginResponseDto> handleOAuth2LoginRequest(OAuth2User oAuth2User, String registrationId) {
         AuthProviderType providerType = authUtil.getProviderTypeFromRegistrationId(registrationId);

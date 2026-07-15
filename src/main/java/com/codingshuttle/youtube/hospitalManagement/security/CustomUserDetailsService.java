@@ -13,6 +13,9 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
 
+    // User implements UserDetails directly (see entity/User.java) so there's no separate
+    // mapping/adapter layer here - the JPA entity IS the security principal Spring Security
+    // works with, for both this AuthenticationManager-driven login path and JwtAuthFilter's manual lookup.
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         return userRepository.findByUsername(username).orElseThrow();

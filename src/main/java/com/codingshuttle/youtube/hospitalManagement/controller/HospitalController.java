@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+// /public/** is whitelisted in WebSecurityConfig - anonymous callers can browse the doctor directory
+// without logging in, which is why this lives in its own controller separate from DoctorController.
 @RestController
 @RequestMapping("/public")
 @RequiredArgsConstructor

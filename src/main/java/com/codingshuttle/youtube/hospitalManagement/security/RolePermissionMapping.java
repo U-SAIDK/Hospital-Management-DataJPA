@@ -11,6 +11,10 @@ import java.util.stream.Collectors;
 import static com.codingshuttle.youtube.hospitalManagement.entity.type.PermissionType.*;
 import static com.codingshuttle.youtube.hospitalManagement.entity.type.RoleType.*;
 
+// Static and immutable by design: this is the single source of truth for "what can each role
+// do," computed in memory every time (User.getAuthorities() calls this on every authentication),
+// never persisted per-user. Changing this map changes behavior for ALL users of that role
+// instantly with no data migration - but it also means no per-user permission overrides or audit trail.
 public class RolePermissionMapping {
 
     private static final Map<RoleType, Set<PermissionType>> map = Map.of(

@@ -12,6 +12,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+// Public endpoints (see WebSecurityConfig) - no authentication required to reach login/signup.
+// All the real work (password checks, JWT issuance, User+Patient creation) lives in AuthService;
+// this controller only shuttles DTOs in and out.
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor

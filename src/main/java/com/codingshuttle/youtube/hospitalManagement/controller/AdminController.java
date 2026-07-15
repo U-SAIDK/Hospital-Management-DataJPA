@@ -12,6 +12,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+// Kept deliberately thin: URL-level access control for the whole /admin/** prefix lives in
+// WebSecurityConfig (ROLE_ADMIN), so this controller just extracts request params and delegates -
+// no business logic, no entity handling, no security decisions made here.
 @RestController
 @RequestMapping("/admin")
 @RequiredArgsConstructor
@@ -28,6 +31,8 @@ public class AdminController {
         return ResponseEntity.ok(patientService.getAllPatients(pageNumber, pageSize));
     }
 
+    // Request body is a dedicated DTO, not the Doctor/User entities - keeps the API contract decoupled
+    // from persistence details (e.g. no client-controlled entity IDs or relationship graphs sneaking in).
     @PostMapping("/onBoardNewDoctor")
     public ResponseEntity<DoctorResponseDto> onBoardNewDoctor(@RequestBody OnboardDoctorRequestDto onboardDoctorRequestDto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(doctorService.onBoardNewDoctor(onboardDoctorRequestDto));
